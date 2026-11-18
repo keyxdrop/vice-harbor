@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Vice Harbor — an open-world crime sandbox</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #79c7e3; font-family: "Segoe UI", Arial, sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hidden { display: none !important; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  .panel { background: rgba(10, 14, 24, 0.62); border: 1px solid rgba(255,255,255,0.22); border-radius: 10px; color: #fff; }
+  #stats { position: absolute; top: 14px; left: 14px; padding: 10px 14px; min-width: 210px; }
+  #healthBar { height: 13px; background: rgba(255,255,255,0.18); border-radius: 7px; overflow: hidden; margin-bottom: 7px; }
+  #healthFill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff4757, #ff6b81); transition: width 0.18s; }
+  #cashRow { font-size: 21px; font-weight: 800; letter-spacing: 0.4px; }
+  #cashVal { color: #2ee66b; }
+  #armourRow { font-size: 12px; opacity: 0.85; }
+  #mapBox { position: absolute; top: 14px; right: 14px; padding: 8px; text-align: center; }
+  #minimap { display: block; width: 188px; height: 188px; border-radius: 6px; background: #101820; }
+  #starsVal { font-size: 24px; letter-spacing: 3px; color: #ffd32a; text-shadow: 0 0 7px rgba(255,190,0,0.8); min-height: 30px; }
+  #starsVal .off { color: rgba(255,255,255,0.18); text-shadow: none; }
+  #objective { position: absolute; left: 14px; bottom: 16px; max-width: 360px; padding: 10px 14px; }
+  #objectiveTitle { color: #ffd32a; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; }
+  #objectiveText { font-size: 14px; margin-top: 3px; line-height: 1.35; }
+  #dialogue { position: absolute; left: 50%; bottom: 108px; transform: translateX(-50%); width: min(620px, 86vw); padding: 11px 16px; }
+  #dialogueName { color: #7bedff; font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+  #dialogueText { font-size: 16px; margin-top: 2px; line-height: 1.4; }
+  #prompt { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); padding: 7px 16px; font-size: 15px; font-weight: 700; }
+  #prompt b { color: #ffd32a; }
+  #speedBox { position: absolute; right: 16px; bottom: 16px; padding: 8px 14px; text-align: right; }
+  #speedVal { font-size: 30px; font-weight: 800; }
+  #speedBox small { opacity: 0.8; }
+  #toast { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); padding: 12px 26px; font-size: 21px; font-weight: 800; color: #ffd32a; text-align: center; }
+  #toast small { display: block; color: #fff; font-size: 14px; font-weight: 600; }
+  #bustWrap { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); width: 240px; padding: 7px 10px; text-align: center; font-weight: 800; color: #ff6b81; font-size: 13px; letter-spacing: 1px; }
+  #bustBar { height: 8px; background: rgba(255,255,255,0.2); border-radius: 5px; overflow: hidden; margin-top: 4px; }
+  #bustFill { height: 100%; width: 0%; background: #ff4757; }
+  #crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.9); font-size: 22px; text-shadow: 0 0 4px #000; }
+  #vignette { position: fixed; inset: 0; pointer-events: none; z-index: 4; box-shadow: inset 0 0 120px rgba(255,0,40,0); transition: box-shadow 0.15s; }
+
+  /* ---------- Screens ---------- */
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; }
+  #startScreen { background: linear-gradient(180deg, rgba(16,10,40,0.25) 0%, rgba(16,10,40,0.55) 78%, rgba(10,6,26,0.88) 100%); }
+  #gameTitle { font-family: "Arial Black", Arial, sans-serif; font-size: clamp(46px, 9vw, 96px); font-style: italic; letter-spacing: 2px; line-height: 0.95;
+    background: linear-gradient(180deg, #ffe45e 12%, #ff7b54 55%, #ff2e88 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 4px 0 rgba(20,0,40,0.55)) drop-shadow(0 0 26px rgba(255,46,136,0.35)); }
+  #gameSub { font-size: clamp(14px, 2.2vw, 21px); font-weight: 700; letter-spacing: 5px; text-transform: uppercase; color: #aef3ff; text-shadow: 0 2px 8px #003; margin-top: 6px; }
+  #brief { max-width: 620px; margin: 20px 18px 4px; font-size: 16px; line-height: 1.5; text-shadow: 0 1px 4px #000; }
+  #controls { display: grid; grid-template-columns: auto auto; gap: 3px 16px; margin: 16px 0 20px; font-size: 14px; text-align: left; background: rgba(8,10,20,0.55); padding: 12px 20px; border-radius: 10px; }
+  #controls b { color: #ffd32a; text-align: right; }
+  .bigbtn { pointer-events: auto; cursor: pointer; border: 0; border-radius: 10px; padding: 13px 42px; margin: 5px; font-size: 19px; font-weight: 800; letter-spacing: 1px;
+    background: linear-gradient(180deg, #ffb52e, #ff7847); color: #241300; box-shadow: 0 5px 0 #a33c14, 0 8px 22px rgba(0,0,0,0.45); }
+  .bigbtn:hover { filter: brightness(1.08); }
+  .bigbtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #a33c14; }
+  .ghostbtn { background: rgba(255,255,255,0.14); color: #fff; box-shadow: 0 5px 0 rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.4); }
+  #saveNote { font-size: 13px; opacity: 0.85; margin-top: 8px; }
+  #pauseScreen, #endScreen { background: rgba(6, 6, 14, 0.72); }
+  #endTitle { font-family: "Arial Black", Arial, sans-serif; font-size: clamp(44px, 8vw, 84px); font-style: italic; letter-spacing: 3px; }
+  #endTitle.busted { color: #54a0ff; text-shadow: 0 0 34px rgba(60,120,255,0.7); }
+  #endTitle.wasted { color: #ff4757; text-shadow: 0 0 34px rgba(255,40,60,0.7); }
+  #endText { font-size: 17px; margin: 10px 0 20px; opacity: 0.92; }
+  #pauseScreen h2 { font-family: "Arial Black", Arial, sans-serif; font-style: italic; font-size: 44px; letter-spacing: 2px; margin: 0 0 14px; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Vice Harbor: a 3D open-world crime sandbox"></canvas>
+<div id="vignette"></div>
+
+<div id="hud" class="hidden">
+  <div id="stats" class="panel">
+    <div id="healthBar"><div id="healthFill"></div></div>
+    <div id="cashRow">CASH <span id="cashVal">$0</span></div>
+    <div id="armourRow">VICE HARBOR &mdash; <span id="clockVal">DAY</span></div>
+  </div>
+  <div id="mapBox" class="panel">
+    <canvas id="minimap" width="188" height="188"></canvas>
+    <div id="starsVal"></div>
+  </div>
+  <div id="objective" class="panel">
+    <div id="objectiveTitle">Free Roam</div>
+    <div id="objectiveText">Explore Vice Harbor.</div>
+  </div>
+  <div id="dialogue" class="panel hidden">
+    <div id="dialogueName">Mara</div>
+    <div id="dialogueText"></div>
+  </div>
+  <div id="prompt" class="panel hidden"></div>
+  <div id="speedBox" class="panel hidden">
+    <span id="speedVal">0</span> <small>MPH</small>
+  </div>
+  <div id="toast" class="panel hidden"></div>
+  <div id="bustWrap" class="panel hidden">BUSTED<div id="bustBar"><div id="bustFill"></div></div></div>
+  <div id="crosshair" class="hidden">+</div>
+</div>
+
+<div id="startScreen" class="screen">
+  <div id="gameTitle">VICE HARBOR</div>
+  <div id="gameSub">One city. One fixer. No brakes.</div>
+  <p id="brief">The docks are hot, the cops are bought, and Mara Voss runs every dirty job in Vice Harbor.
+    Steal cars, run packages, dodge the heat and build your name &mdash; mission by mission, dollar by dollar.</p>
+  <div id="controls">
+    <b>W A S D</b><span>Move / drive</span>
+    <b>Shift</b><span>Sprint on foot</span>
+    <b>F</b><span>Enter / exit car</span>
+    <b>Mouse / Click</b><span>Orbit camera / shoot on foot</span>
+    <b>Space</b><span>Shoot / handbrake</span>
+    <b>E</b><span>Talk / interact</span>
+    <b>P</b><span>Pause</span>
+  </div>
+  <div>
+    <button id="btnNew" class="bigbtn">NEW GAME</button>
+    <button id="btnContinue" class="bigbtn ghostbtn hidden">CONTINUE</button>
+  </div>
+  <div id="saveNote"></div>
+</div>
+
+<div id="pauseScreen" class="screen hidden">
+  <h2>PAUSED</h2>
+  <button id="btnResume" class="bigbtn">RESUME</button>
+  <button id="btnQuitTitle" class="bigbtn ghostbtn">QUIT TO TITLE</button>
+</div>
+
+<div id="endScreen" class="screen hidden">
+  <div id="endTitle" class="wasted">WASTED</div>
+  <div id="endText"></div>
+  <button id="btnRespawn" class="bigbtn">RESPAWN AT HARBOR CLINIC</button>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
